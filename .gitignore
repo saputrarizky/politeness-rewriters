@@ -23,16 +23,8 @@ ENV/
 
 # Logs and outputs
 logs/
-out/
 *.log
 *.csv
-
-# Data and model files (large assets)
-data/*
-!data/README.md
-out/model*
-out/classifier/*
-out/eval_samples.csv
 
 # Temporary files
 *.tmp
