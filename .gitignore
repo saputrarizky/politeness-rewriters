@@ -1,0 +1,68 @@
+# Python cache and build files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Jupyter and Colab notebooks checkpoints
+.ipynb_checkpoints/
+
+# IDE settings
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs and outputs
+logs/
+out/
+*.log
+*.csv
+
+# Data and model files (large assets)
+data/*
+!data/README.md
+out/model*
+out/classifier/*
+out/eval_samples.csv
+
+# Temporary files
+*.tmp
+*.bak
+*.orig
+*.aux
+
+# OS system files
+.DS_Store
+Thumbs.db
+
+# Environment configuration
+*.env
+.env.local
+.env.*
+
+# Model caches
+huggingface/
+transformers_cache/
+.cache/
+hf_cache/
+
+# Gradio / Streamlit artifacts
+gradio_cached_examples/
+__results__/
+uploads/
+sessions/
+
+# Backup archives
+*.zip
+*.tar
+*.tar.gz
+*.7z

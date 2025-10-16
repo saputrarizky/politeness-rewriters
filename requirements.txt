@@ -1,0 +1,38 @@
+### -------------------------------------------------------------------------------------------------
+## Team: 사푸트라 (Saputra Rizky Johan), 바트오르식 (Butemj Bat-Orshikh), 쉬슈잔 (Shu Xian Chow)
+## Institution: Seoul National University, South Korea
+## Course: 2025-2 Introduction to Natural Language Processing (001)
+## Instructors: 황승원 (Prof), 김종윤(TA), 한상은 (TA)
+## Project: Classifier-Guided Politeness Rewriting via Span Detection and Controlled Text Generation
+## Corpus: Stanford Politeness Corpus (Convokit)
+## Note: If additional implementations are to be made, please document them at the README file
+### -------------------------------------------------------------------------------------------------
+
+# ------------------------------------------------------
+# SPECIFICATIONS AND SETUP
+# ------------------------------------------------------
+# Core Requirements (Setup under a working specifications)
+torch>=2.1.0
+transformers>=4.42.0
+datasets>=2.20.0
+sentence-transformers>=3.0.1
+scikit-learn>=1.3.0
+pandas>=2.0.0
+numpy>=1.24.0
+tqdm>=4.66.0
+bert-score>=0.3.13
+evaluate>=0.4.1
+gradio>=4.36.1
+nltk>=3.8.1
+accelerate>=0.33.0
+pyyaml>=6.0
+
+# Convokit and spacy stack (Pins to ensure prebuilt blis wheel)
+convokit==2.5.3
+spacy==3.6.1
+thinc<8.2
+blis<0.8,>=0.7.4
+
+### -------------------------------------------------------------------------------------------------
+## END: Add implementations if necessary
+### -------------------------------------------------------------------------------------------------
