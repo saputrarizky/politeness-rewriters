@@ -207,7 +207,7 @@ We aim to perform **style transfer** on short requests/sentences to make them mo
 - Runs `rewrite()` to measure **% improved politeness** and exports CSV rows with before/after.
 
 ## 🚀 Executables & How to Run
-### Option 1 - Drive
+### Mount Via Drive
 Upload `politeness-rewritter.zip` or mount to drive and execute the included notebook:
 ```bash
 #!/bin/bash
@@ -216,16 +216,6 @@ Upload `politeness-rewritter.zip` or mount to drive and execute the included not
 !pip install -r requirements.txt
 !python src/pipeline.py --text "why are you so slow in replying"
 ```
-
-### Option 2 - GitHub
-Run via a public and accessable GitHub link of this project through the notebook:
-```bash
-!git clone https://github.com/saputrarizky/politeness-rewriters.git
-%cd politeness-rewriters
-!pip install -r requirements.txt
-!python src/app.py
-```
-
 
 ## 🛠️ Recommended Adjustments & Troubleshooting
 
@@ -297,10 +287,9 @@ The project is expected to have these results in accordance to a well trained an
 
 ## 👥 Team Contributions
 The work is contributed as follows: (Please update this section as the project evolves.)
-- **Saputra Rizky Johan** — Project Architecture, Pipeline Design, Gradio Integration, Classifier Integration, Reranking Integration, Rewriting T5 Integration, Rule Based Modulator, README Authoring, Github Management.
+- **Saputra Rizky Johan** — Project Architecture, Pipeline Design, Gradio Integration, Classifier Integration, Reranking Integration, Rewriting T5 Integration, Rule Based Modulator, README Authoring, Github Management, Data Training, Notebook Integration.
 - **Bat‑Orshikh** — Data Training, Data Evaluation, Error Analysis, UI/UX Management, Simulation and Testing, Documentations, Github Management.
-- **Shu Xian Chow** — Data Training, Data Evaluation, Error Analysis, UI/UX Management, Simulation and Testing, Documentations, Github Management.
-Data pipeline, SBERT integration
+- **Shu Xian Chow** — Data Training, Data Evaluation, Error Analysis, UI/UX Management, Simulation and Testing, Documentations, Github Management, Data pipeline, SBERT integration.
 
 ## 🧠 Key Takeaways
 This project demonstrates how **hybrid architectures** — combining discriminative and generative models — can perform **controlled style transfer** effectively.  
