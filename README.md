@@ -220,7 +220,7 @@ Upload `politeness-rewritter.zip` or mount to drive and execute the included not
 ### Option 2 - GitHub
 Run via a public and accessable GitHub link of this project through the notebook:
 ```bash
-!git clone https://github.com/YOUR_USERNAME/politeness-rewriters.git
+!git clone https://github.com/saputrarizky/politeness-rewriters.git
 %cd politeness-rewriters
 !pip install -r requirements.txt
 !python src/app.py
