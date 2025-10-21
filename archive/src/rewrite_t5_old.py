@@ -63,29 +63,33 @@ def _load_model():
         _mdl.eval()
     return _tok, _mdl
 
-
 # ---------------------------------------------------------------------
 # PROMPTING AND TEMPLATES (POLITENESS CONDITIONING)
 # ---------------------------------------------------------------------
 _PROMPTS = {
-    # Control tags that the model is unlikely to echo as natural language
-    "concise:polite": "[POLITE] ",
-    "concise:extra-polite": "[POLITE-PLUS] ",
-    "verbose:polite": "[POLITE] ",
-    "verbose:extra-polite": "[POLITE-PLUS] ",
+    # Short, model-native cues — least likely to be echoed
+    "concise:polite": "paraphrase politely: ",
+    "concise:extra-polite": "paraphrase extra polite: ",
+    # Keep verbose as fallback if you ever switch styles explicitly
+    "verbose:polite": "Paraphrase to a polite tone: ",
+    "verbose:extra-polite": "Paraphrase to a very polite, formal tone: ",
 }
 
 def _normalize_tone(tone: str) -> str:
     t = (tone or "polite").strip().lower()
     return "extra-polite" if t in ("extra-polite", "very-polite", "formal") else "polite"
 
-def _build_prompt(text: str, tone: str = "polite", style: str = None, strategy_hints: List[str] = None) -> str:
+def _build_prompt(
+    text: str,
+    tone: str = "polite",
+    style: str = None,
+    strategy_hints: List[str] = None,
+) -> str:
     """
     Backward compatible:
-      - prefers `tone` ("polite" | "extra-polite")
-      - accepts legacy `style` param if callers pass it (ignored for content,
-        we select from PARAPHRASE_PROMPT_STYLE instead).
-      - `strategy_hints` kept for compatibility; currently unused.
+    - prefers tone ("polite" | "extra-polite")
+    - accepts legacy style param if callers pass it (ignored for content, we select from PARAPHRASE_PROMPT_STYLE instead).
+    - strategy_hints kept for compatibility; currently unused.
     """
     # select prompt family from config
     style_key = (PARAPHRASE_PROMPT_STYLE or "concise").strip().lower()
@@ -131,7 +135,6 @@ def _generation_kwargs(
         kw.update(dict(temperature=float(temperature), top_p=float(top_p)))
     return kw
 
-
 # ---------------------------------------------------------------------
 # POST-PROCESSING HELPERS
 # ---------------------------------------------------------------------
@@ -154,13 +157,9 @@ def _soft_postprocess(s: str) -> str:
     s = re.sub(r"^[-–•\s]+", "", s)
     s = _clean_spaces(s)
     s = _capitalize_first(s)
-    s = re.sub(r'\bcan you politely\b', 'Could you please', s, flags=re.IGNORECASE)
-    s = re.sub(r'\b(please[\s,;:!?]*){2,}', 'please ', s, flags=re.IGNORECASE)
-    s = re.sub(r'\s+\.', '.', s)
     s = _ensure_sentence_end(s)
     return s
 
-# Add a set of strip leak patterns to avoid in wrapping the output
 _STRIP_LEAK_PATTERNS = [
     r"^\s*(rewrite|re-write|please\s*rewrite|please\s*help\s*rewrite|rephrase|paraphrase|make.*polite(?:ly)?)\s*:?\s*",
     r"^\s*(rewrite this sentence(?:\s+polite(?:ly)?)?)\s*:?\s*",
@@ -175,16 +174,6 @@ def _strip_instruction_leak(s: str) -> str:
     t = re.sub(r'^[\'"“”\-–•\s]+', "", t).strip()
     return t
 
-# Profanity and hostility normalizer
-_PROFANITY_RX = re.compile(
-    r"\b(fuck(?:ing)?|f\*+k|shit|bitch|asshole|idiot|stupid|dumb)\b",
-    flags=re.IGNORECASE
-)
-
-# # Replace profanities with a neutral placeholder so the generator doesn’t try to politely rephrase them literally.
-def _clean_profanity(t: str) -> str:
-    return _PROFANITY_RX.sub("[EXPLETIVE]", t or "")
-
 # ---------------------------------------------------------------------
 # CANDIDATE DUPLICATION (TEXTUAL AND LITE SEMANTIC)
 # ---------------------------------------------------------------------
@@ -193,6 +182,7 @@ def _normalize_for_dupe(s: str) -> str:
     s = re.sub(r"[^a-z0-9 ]+", "", s)
     s = re.sub(r"\s{2,}", " ", s)
     return s
+
 
 def deduplicate(cands: List[str]) -> List[str]:
     seen = set()
@@ -203,7 +193,6 @@ def deduplicate(cands: List[str]) -> List[str]:
             seen.add(key)
             uniq.append(c)
     return uniq
-
 
 # ---------------------------------------------------------------------
 # PARAPHRASING API (COMPATIBLE WITH PIPELINE)
@@ -226,16 +215,13 @@ def paraphrase(
     early_stopping: bool = True,
 ) -> List[str]:
     """
-    Generate polite paraphrases for `text`.
+    Generate polite paraphrases for text.
     Parameters align with Transformers.generate(); defaults favor safe beam search.
     Set do_sample=True for more diverse outputs (with top_p / temperature).
     """
     text = (text or "").strip()
     if not text:
         return []
-
-    # Neutralize profanities before prompt building
-    text = _clean_profanity(text)
 
     tok, mdl = _load_model()
     prompt = _build_prompt(text, tone=tone, style=style, strategy_hints=strategy_hints)
@@ -255,22 +241,8 @@ def paraphrase(
         early_stopping=early_stopping,
     )
 
-    # Discourage meta/control tokens and training words
-    BAD_WORDS = [
-        "paraphrase", "rewrite", "sentence", "instruction",
-        "[", "]", "POLITE", "POLITE-PLUS"
-    ]
-    bad_words_ids = []
-    try:
-        for w in BAD_WORDS:
-            ids = tok(w, add_special_tokens=False).input_ids
-            if ids:
-                bad_words_ids.append(ids)
-    except Exception:
-        bad_words_ids = []
-
     with torch.no_grad():
-        outs = mdl.generate(**enc, bad_words_ids=(bad_words_ids or None), **gen_kwargs)
+        outs = mdl.generate(**enc, **gen_kwargs)
 
     decoded = [tok.decode(o, skip_special_tokens=True) for o in outs]
 
@@ -281,29 +253,13 @@ def paraphrase(
             continue
         s = _strip_instruction_leak(s)
         s = _soft_postprocess(s)
-        # Extra hallucination cleanup
-        s = re.sub(r"['\"“”‘’]+", "", s)                       # remove odd quotes
-        s = re.sub(r"\[?\b[Pp]olite(?:-plus)?\b\]?", "", s)    # remove stray 'polite' tag echoes
-        s = re.sub(r"\b[Pp]lease\s+please\b", "please", s)     # collapse duplicate 'please'
-        s = re.sub(r"\b[Tt]hanks\s+thanks\b", "thanks", s)     # collapse duplicate 'thanks'
-        s = re.sub(r"\b[Ss]he said:? ?['\"]?[Pp]olite['\"]?", "", s)  # drop quoted tag mentions
-        s = re.sub(r"\[[^\]]*\]", "", s) 
-        s = re.sub(r"\s{2,}", " ", s).strip()
-
-        # Drop meta-ish candidates outright
-        if re.search(r'^(?:\W)*(paraphrase|rewrite|instruction|prompt)\b', s, re.IGNORECASE):
-            continue
-        # Also catch the classic “thank you for your .* paraphrase” artifact
-        if re.search(r'thank you .*?\bparaphrase\b', s, re.IGNORECASE):
-            continue
         if s:
             cleaned.append(s)
-    
+
     uniq = deduplicate(cleaned)
 
     # Safety: limit to requested count after de-dup
     return uniq[: max(1, int(num_return_sequences))]
-
 
 # ---------------------------------------------------------------------
 # EXTRA CONVENIENCE (DETERMINISTIC AND SAMPLING MODELS)
@@ -336,7 +292,6 @@ def paraphrase_beam(
         early_stopping=True,
     )
 
-
 def paraphrase_sample(
     text: str,
     num_return_sequences: int = 6,
@@ -350,7 +305,7 @@ def paraphrase_sample(
     return paraphrase(
         text=text,
         num_return_sequences=num_return_sequences,
-        num_beams=num_beams,     # Diverse beam sampling if >1
+        num_beams=num_beams,  # Diverse beam sampling if >1
         max_new_tokens=max_new_tokens,
         tone=tone,
         style=style,
@@ -364,7 +319,6 @@ def paraphrase_sample(
         length_penalty=0.9,
         early_stopping=True,
     )
-
 
 # ---------------------------------------------------------------------
 # SMOKE TEST
