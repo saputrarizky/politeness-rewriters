@@ -73,7 +73,7 @@ def run_rewriter(text, tone, use_rule, show_probs):
     HISTORY.append({
         "timestamp": datetime.now().strftime("%H:%M:%S"),
         "input": text,
-        "output": rewritten,
+        "output": rewritten if rewritten.strip() else "(No valid rewrite generated)",
         "before": before_prob,
         "after": after_prob,
         "rule": use_rule
@@ -106,11 +106,18 @@ def export_csv():
 # ------------------------------------------------------
 # GRADIO INTERFACE LAYOUT
 # ------------------------------------------------------
-with gr.Blocks(css="""
-#title {font-size: 2em; font-weight: bold; color: #2c3e50;}
-#sub {color:#555; margin-bottom:1em;}
-.output-box {background:#f9f9f9; border-radius:8px; padding:0.8em;}
-""") as demo:
+with gr.Blocks() as demo:
+    # Inject custom CSS via HTML (works across Gradio versions)
+    gr.HTML(
+        """
+        <style>
+        #title {font-size: 2em; font-weight: bold; color: #2c3e50;}
+        #sub {color:#555; margin-bottom:1em;}
+        .output-box {background:#f9f9f9; border-radius:8px; padding:0.8em;}
+        </style>
+        """
+    )
+
     # Header
     gr.Markdown(f"<div id='title'>{APP_TITLE}</div>")
     gr.Markdown(f"<div id='sub'>{APP_SUB}</div>")

@@ -43,12 +43,12 @@ SPLIT = (0.8, 0.1, 0.1)    # (train, val, test) proportions
 # --------------------------------------------------------------
 def main():
     os.makedirs(OUT_DIR, exist_ok=True)
-    print("📥 Downloading Stanford Politeness Corpus via ConvoKit...")
+    print("Downloading Stanford Politeness Corpus via ConvoKit...")
 
-    # 1️⃣ Download + load corpus
+    # Download + load corpus
     corpus = Corpus(download("stanford-politeness-corpus"))
 
-    # 2️⃣ Extract usable utterances
+    # Extract usable utterances
     rows = []
     for utt in corpus.utterances.values():
         text = (utt.text or "").strip()
@@ -65,16 +65,16 @@ def main():
         rows.append({"text": text, "label": label, "score": score})
 
     random.shuffle(rows)
-    print(f"✅ Collected {len(rows)} valid utterances.")
+    print(f"Collected {len(rows)} valid utterances.")
 
-    # 3️⃣ Save full dataset
+    # Save full dataset
     all_path = os.path.join(OUT_DIR, "stanford_politeness.jsonl")
     with open(all_path, "w", encoding="utf-8") as f:
         for r in rows:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
-    print(f"💾 Wrote complete dataset: {len(rows)} → {all_path}")
+    print(f"Wrote complete dataset: {len(rows)} → {all_path}")
 
-    # 4️⃣ Train / val / test split
+    # Train / val / test split
     n = len(rows)
     n_tr = int(SPLIT[0] * n)
     n_val = int(SPLIT[1] * n)
@@ -85,9 +85,9 @@ def main():
         with open(p, "w", encoding="utf-8") as f:
             for r in part:
                 f.write(json.dumps(r, ensure_ascii=False) + "\n")
-        print(f"📄 {name}: {len(part)} → {p}")
+        print(f"{name}: {len(part)} → {p}")
 
-    print("🏁 Done! Dataset ready for classifier_train.py")
+    print("Done! Dataset ready for classifier_train.py")
 
 # --------------------------------------------------------------
 # ENTRY POINT

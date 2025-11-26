@@ -35,26 +35,71 @@ from typing import Dict, List, Tuple
 # ----------------------------------------------------------
 # Add more lexicons
 LEXICONS = {
-    "gratitude": ["thank you", "thanks", "much appreciated", "i appreciate that"],
-    "apology": ["sorry", "i apologize", "excuse me", "pardon me"],
-    "hedges": ["maybe", "perhaps", "a bit", "slightly", "i think", "i feel", "it seems"],
-    "request_softeners": ["please", "could you", "would you", "would you mind", "can you", "may i"],
-    "deference": ["sir", "madam", "dear", "kindly"],
+    "gratitude": [
+        "thank you", "thanks", "much appreciated", "i appreciate that",
+        "thank you so much", "really appreciate it", "i truly appreciate it"
+    ],
+    "apology": [
+        "sorry", "i apologize", "excuse me", "pardon me",
+        "my apologies", "i sincerely apologize"
+    ],
+    "hedges": [
+        "maybe", "perhaps", "a bit", "slightly", "i think",
+        "i feel", "it seems",
+        "possibly", "i guess", "i suppose"
+    ],
+    "request_softeners": [
+        "please", "could you", "would you", "would you mind",
+        "can you", "may i",
+        "would it be possible to",
+        "is there any chance you could",
+        "i’d appreciate if you could"
+    ],
+    "deference": [
+        "sir", "madam", "dear", "kindly"
+    ],
 }
+
 # Add more negative markers
 NEGATIVE_MARKERS = {
     "profanity": re.compile(r"\b(damn|hell|stupid|idiot|fuck|shit|wtf|bastard|moron)\b", re.I),
     "demandy": re.compile(r"\b(asap|immediately|right away|now|at once)\b", re.I),
     "blame": re.compile(r"\byou (forgot|didn't|failed to)\b", re.I),
+
+    # Extended negative markers
+    "accusation": re.compile(r"\byou (never|always|keep|constantly)\b", re.I),
+    "harsh_modal": re.compile(r"\b(don't|stop|you better|you should)\b", re.I),
+    "rude_question": re.compile(r"\bwhy (did|didn’t|didn't you|haven't you)\b", re.I),
+    "insult": re.compile(r"\b(useless|worthless|terrible|awful|dumb)\b", re.I),
 }
+
 # Add more imperative patters
 IMPERATIVE_PATTERNS = [
+    # Initial imperative declarations
     (re.compile(r"\b(send|give|provide|share)\s+(me|us)\b", re.I), "could you please \\1 \\2"),
     (re.compile(r"\b(send|give|provide|share)\s+(the|a|an)\b", re.I), "could you please \\1 \\2"),
     (re.compile(r"\b(fix|answer|explain|solve|check|do)\s+(this|it|that)\b", re.I),
      "could you please \\1 \\2"),
     (re.compile(r"\b(i need|i want|i expect)\b", re.I), "could i please have"),
     (re.compile(r"\b(get|move|leave)\s+out\b", re.I), "step outside for a moment"),
+
+    # New extended imperative softeners
+    (re.compile(r"\btell me\b", re.I), "could you please tell me"),
+    (re.compile(r"\bgive me\b", re.I), "could you please give me"),
+    (re.compile(r"\bexplain why\b", re.I), "could you please explain why"),
+    (re.compile(r"\bstop\b(?!.*for a moment)", re.I), "could you please stop"),
+    (re.compile(r"\bdon't\b", re.I), "please avoid"),
+    (re.compile(r"\byou should\b", re.I), "it might help if you could"),
+    (re.compile(r"\b(reply|respond)\b", re.I), "could you please \\1"),
+    (re.compile(r"\bcheck\b", re.I), "could you please check"),
+    (re.compile(r"\bdo it again\b", re.I), "could you please try that again"),
+    (re.compile(r"\btell (him|her|them)\b", re.I), "could you please tell \\1"),
+    (re.compile(r"\bdon't send\b", re.I), "please avoid sending"),
+    (re.compile(r"\bdon't send me\b", re.I), "please avoid sending me"),
+
+    # Optional command softener for direct imperatives
+    (re.compile(r"^(send|give|fix|check|explain|tell|do|make)\b", re.I),
+     "could you please \\1"),
 ]
 
 # ----------------------------------------------------------

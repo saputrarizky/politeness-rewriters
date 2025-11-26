@@ -117,7 +117,12 @@ def _apply_rules(text: str, enabled: bool) -> str:
 def _generate_candidates(text: str, n: int) -> List[str]:
     """Generate neural paraphrase candidates."""
     n = max(1, int(n or 4))
-    return paraphrase(text, num_return_sequences=n)
+    return paraphrase(
+        text,
+        num_return_sequences=n,
+        num_beams=max(6, n),    # more beams to explore options
+        max_new_tokens=96,      # allow slightly longer polite variants
+    )
 
 def _rerank(orig: str, cands: List[str]) -> Tuple[str, List[Tuple[str, float, float, float]]]:
     """
@@ -145,23 +150,35 @@ def _apply_strategy_bonus(scored: List[Tuple[str, float, float, float]]) -> List
 # --------------------------------------------------------------
 # OUTPUT ADJUSTMENTS AND REMOVAL OF UNNECESSARY PROMPTS
 # --------------------------------------------------------------
+_INSTR_PREFIX_PATTERNS = [
+    # “Please rewrite / rephrase / paraphrase …”
+    r"^\s*(please|kindly)\s+(rewrite|rephrase|paraphrase)\b[^:]*:\s*",
+    r"^\s*(please|kindly)\s+(write|read)\s+the\s+following\s+sentence\b[^:]*:\s*",
+
+    # “Rewrite/Rephrase/Paraphrase the following sentence …”
+    r"^\s*(rewrite|rephrase|paraphrase)\s+the\s+following\s+sentence\b[^:]*:\s*",
+
+    # Direct meta labels
+    r"^\s*(input|prompt|instruction)\s*[:\-]\s*",
+
+    # “Here is the rewritten/paraphrased sentence:”
+    r"^\s*here\s+is\s+the\s+(rewritten|paraphrased)\s+sentence\s*[:\-]\s*",
+]
+
 def _strip_instruction_prefix(t: str) -> str:
     s = (t or "").strip()
-    low = s.lower()
-    # Triggers if it starts with an instruction
-    prefixes = [
-        "please write the following sentence",
-        "please read the following sentence",
-        "rewrite the following sentence",
-        "input,"
-    ]
-    for p in prefixes:
-        if low.startswith(p):
-            # Remove the first sentence 
-            parts = s.split('.', 1)
-            if len(parts) > 1:
-                s = parts[1].strip()
-            break
+    if not s:
+        return s
+
+    # Apply all its patterns
+    for pat in _INSTR_PREFIX_PATTERNS:
+        s = re.sub(pat, "", s, flags=re.IGNORECASE)
+
+    # Remove the leading bullets, quotes, dashes that may remain
+    s = re.sub(r'^[\'"“”\-–•\s]+', "", s)
+
+    # Collapse multiple spaces
+    s = re.sub(r"\s{2,}", " ", s).strip()
     return s
 
 # --------------------------------------------------------------
