@@ -63,29 +63,33 @@ def _load_model():
         _mdl.eval()
     return _tok, _mdl
 
-
 # ---------------------------------------------------------------------
 # PROMPTING AND TEMPLATES (POLITENESS CONDITIONING)
 # ---------------------------------------------------------------------
 _PROMPTS = {
-    # Control tags that the model is unlikely to echo as natural language
-    "concise:polite": "[POLITE] ",
-    "concise:extra-polite": "[POLITE-PLUS] ",
-    "verbose:polite": "[POLITE] ",
-    "verbose:extra-polite": "[POLITE-PLUS] ",
+    # Short, model-native cues — least likely to be echoed
+    "concise:polite": "paraphrase politely: ",
+    "concise:extra-polite": "paraphrase extra polite: ",
+    # Keep verbose as fallback if you ever switch styles explicitly
+    "verbose:polite": "Paraphrase to a polite tone: ",
+    "verbose:extra-polite": "Paraphrase to a very polite, formal tone: ",
 }
 
 def _normalize_tone(tone: str) -> str:
     t = (tone or "polite").strip().lower()
     return "extra-polite" if t in ("extra-polite", "very-polite", "formal") else "polite"
 
-def _build_prompt(text: str, tone: str = "polite", style: str = None, strategy_hints: List[str] = None) -> str:
+def _build_prompt(
+    text: str,
+    tone: str = "polite",
+    style: str = None,
+    strategy_hints: List[str] = None,
+) -> str:
     """
     Backward compatible:
-      - prefers `tone` ("polite" | "extra-polite")
-      - accepts legacy `style` param if callers pass it (ignored for content,
-        we select from PARAPHRASE_PROMPT_STYLE instead).
-      - `strategy_hints` kept for compatibility; currently unused.
+    - prefers tone ("polite" | "extra-polite")
+    - accepts legacy style param if callers pass it (ignored for content, we select from PARAPHRASE_PROMPT_STYLE instead).
+    - strategy_hints kept for compatibility; currently unused.
     """
     # select prompt family from config
     style_key = (PARAPHRASE_PROMPT_STYLE or "concise").strip().lower()
@@ -131,7 +135,6 @@ def _generation_kwargs(
         kw.update(dict(temperature=float(temperature), top_p=float(top_p)))
     return kw
 
-
 # ---------------------------------------------------------------------
 # POST-PROCESSING HELPERS
 # ---------------------------------------------------------------------
@@ -154,92 +157,13 @@ def _soft_postprocess(s: str) -> str:
     s = re.sub(r"^[-–•\s]+", "", s)
     s = _clean_spaces(s)
     s = _capitalize_first(s)
-    s = re.sub(r'\bcan you politely\b', 'Could you please', s, flags=re.IGNORECASE)
-    s = re.sub(r'\b(please[\s,;:!?]*){2,}', 'please ', s, flags=re.IGNORECASE)
-    s = re.sub(r'\s+\.', '.', s)
     s = _ensure_sentence_end(s)
     return s
 
-# Sentence-level cleanup and garbage fragment control
-_SENT_SPLIT_RE = re.compile(r'(?<=[.!?])\s+')
-
-def _drop_garbage_fragments(text: str) -> str:
-    """
-    Final safety pass:
-    - Remove fragments with POLITE/plite/plz/pls artifacts
-    - Remove tiny 'Could you.' / 'Could you please.' tails if we already have a main sentence
-    - Keep the best main sentence as the output
-    """
-    s = (text or "").strip()
-    if not s:
-        return s
-
-    # Normalize some obvious junk
-    s = re.sub(r"\b(POLITE|polite\-plus|politeplus)\b", "", s, flags=re.IGNORECASE)
-    s = re.sub(r"\b\w*plite\w*\b", "", s, flags=re.IGNORECASE)  # kills 'iplITE' etc.
-    s = re.sub(r"\b(plz|pls)\b", "please", s, flags=re.IGNORECASE)
-    s = re.sub(r"\bdont\b", "don't", s, flags=re.IGNORECASE)
-
-    # Split into candidate sentences
-    parts = [p.strip() for p in _SENT_SPLIT_RE.split(s) if p.strip()]
-    if not parts:
-        return s.strip()
-
-    cleaned_parts = []
-    for p in parts:
-        low = p.lower()
-
-        # Drop obvious garbage fragments
-        if any(bad in low for bad in ("[polite", "iplite")):
-            continue
-
-        # Drop naked helper fragments if there is some other real sentence
-        if low in ("could you", "could you please", "much appreciated", "thanks", "thank you"):
-            continue
-
-        cleaned_parts.append(p)
-
-    if not cleaned_parts:
-        cleaned_parts = parts
-
-    # Heuristic: pick the longest sentence as main output
-    cleaned_parts.sort(key=len, reverse=True)
-    main = cleaned_parts[0].strip()
-
-    # Fix common double punctuation / spacing
-    main = re.sub(r"\.\.+", ".", main)
-    main = re.sub(r"\s{2,}", " ", main)
-
-    if main and main[-1] not in ".!?":
-        main += "."
-
-    return main.strip()
-
-
-def _dedupe_repeated_clause(s: str) -> str:
-    """
-    Handle patterns like:
-      'Can you please fix this as soon as you can, Could you please fix this?'
-    by keeping a single clause.
-    """
-    if not s:
-        return s
-
-    # specific pattern: repeated 'could you please ...'
-    s = re.sub(
-        r"(could you please [^?\.]+)[, ]+\1\?",
-        r"\1?",
-        s,
-        flags=re.IGNORECASE,
-    )
-    return s
-
-# Add a set of strip leak patterns to avoid in wrapping the output
 _STRIP_LEAK_PATTERNS = [
     r"^\s*(rewrite|re-write|please\s*rewrite|please\s*help\s*rewrite|rephrase|paraphrase|make.*polite(?:ly)?)\s*:?\s*",
     r"^\s*(rewrite this sentence(?:\s+polite(?:ly)?)?)\s*:?\s*",
-    r"^\s*(please|kindly)\s+(write|read)\s+the\s+following\s+sentence\b[^:]*:\s*",
-    r"^\s*(instruction|prompt|input|output)\s*:?\s*",
+    r"^\s*(instruction|prompt)\s*:?\s*",
 ]
 
 def _strip_instruction_leak(s: str) -> str:
@@ -250,16 +174,6 @@ def _strip_instruction_leak(s: str) -> str:
     t = re.sub(r'^[\'"“”\-–•\s]+', "", t).strip()
     return t
 
-# Profanity and hostility normalizer
-_PROFANITY_RX = re.compile(
-    r"\b(fuck(?:ing)?|f\*+k|shit|bitch|asshole|idiot|stupid|dumb)\b",
-    flags=re.IGNORECASE
-)
-
-# # Replace profanities with a neutral placeholder so the generator doesn’t try to politely rephrase them literally.
-def _clean_profanity(t: str) -> str:
-    return _PROFANITY_RX.sub("[EXPLETIVE]", t or "")
-
 # ---------------------------------------------------------------------
 # CANDIDATE DUPLICATION (TEXTUAL AND LITE SEMANTIC)
 # ---------------------------------------------------------------------
@@ -268,6 +182,7 @@ def _normalize_for_dupe(s: str) -> str:
     s = re.sub(r"[^a-z0-9 ]+", "", s)
     s = re.sub(r"\s{2,}", " ", s)
     return s
+
 
 def deduplicate(cands: List[str]) -> List[str]:
     seen = set()
@@ -278,7 +193,6 @@ def deduplicate(cands: List[str]) -> List[str]:
             seen.add(key)
             uniq.append(c)
     return uniq
-
 
 # ---------------------------------------------------------------------
 # PARAPHRASING API (COMPATIBLE WITH PIPELINE)
@@ -301,16 +215,13 @@ def paraphrase(
     early_stopping: bool = True,
 ) -> List[str]:
     """
-    Generate polite paraphrases for `text`.
+    Generate polite paraphrases for text.
     Parameters align with Transformers.generate(); defaults favor safe beam search.
     Set do_sample=True for more diverse outputs (with top_p / temperature).
     """
     text = (text or "").strip()
     if not text:
         return []
-
-    # Neutralize profanities before prompt building
-    text = _clean_profanity(text)
 
     tok, mdl = _load_model()
     prompt = _build_prompt(text, tone=tone, style=style, strategy_hints=strategy_hints)
@@ -330,82 +241,25 @@ def paraphrase(
         early_stopping=early_stopping,
     )
 
-    # Discourage meta/control tokens and training words
-    BAD_WORDS = [
-        "paraphrase", "rewrite", "sentence", "instruction",
-        "[", "]", "POLITE", "POLITE-PLUS"
-    ]
-    bad_words_ids = []
-    try:
-        for w in BAD_WORDS:
-            ids = tok(w, add_special_tokens=False).input_ids
-            if ids:
-                bad_words_ids.append(ids)
-    except Exception:
-        bad_words_ids = []
-
     with torch.no_grad():
-        outs = mdl.generate(**enc, bad_words_ids=(bad_words_ids or None), **gen_kwargs)
+        outs = mdl.generate(**enc, **gen_kwargs)
 
-        decoded = [tok.decode(o, skip_special_tokens=True) for o in outs]
+    decoded = [tok.decode(o, skip_special_tokens=True) for o in outs]
 
     # Strip any instruction leakage, then soft clean, then de-dup
     cleaned = []
     for s in decoded:
         if not s or not s.strip():
             continue
-
         s = _strip_instruction_leak(s)
         s = _soft_postprocess(s)
-
-        # Extra hallucination / meta cleanup
-        s = re.sub(r"['\"“”‘’]+", "", s)                        # remove odd quotes
-        s = re.sub(r"\[?\b[Pp]olite(?:-plus)?\b\]?", "", s)     # remove stray 'polite' tag echoes
-        s = re.sub(r"\b[Pp]lease\s+please\b", "please", s)      # collapse duplicate 'please'
-        s = re.sub(r"\b[Tt]hanks\s+thanks\b", "thanks", s)      # collapse duplicate 'thanks'
-        s = re.sub(r"\b[Ss]he said:? ?['\"]?[Pp]olite['\"]?", "", s)
-        s = re.sub(r"\[[^\]]*\]", "", s)                        # drop any remaining [TAG] noise
-
-        # Strip common meta openers like "Here is the paraphrased sentence:"
-        s = re.sub(
-            r"^\s*here\s+is\s+the\s+(rewritten|paraphrased)\s+sentence\s*[:\-]\s*",
-            "",
-            s,
-            flags=re.IGNORECASE,
-        )
-
-        # Remove generic “thanks for using this tool” tails
-        s = re.sub(
-            r"(?:thank you\s+for\s+(?:your\s+)?(?:request|using\s+this\s+tool)[^\.]*\.?)\s*$",
-            "",
-            s,
-            flags=re.IGNORECASE,
-        )
-
-        # De-duplicate common repeated clause like "... Could you please fix this?"
-        s = _dedupe_repeated_clause(s)
-
-        # Final garbage / fragment cleanup (POLITE junk, 'Could you.' tails, etc.)
-        s = _drop_garbage_fragments(s)
-
-        s = re.sub(r"\s{2,}", " ", s).strip()
-
-        # Drop meta-ish candidates outright
-        if re.search(r'^(?:\W)*(paraphrase|rewrite|instruction|prompt)\b', s, re.IGNORECASE):
-            continue
-        if re.search(r'thank you .*?\bparaphrase\b', s, re.IGNORECASE):
-            continue
-        if re.search(r"\bas an ai\b", s, re.IGNORECASE):
-            continue
-
         if s:
             cleaned.append(s)
-    
+
     uniq = deduplicate(cleaned)
 
     # Safety: limit to requested count after de-dup
     return uniq[: max(1, int(num_return_sequences))]
-
 
 # ---------------------------------------------------------------------
 # EXTRA CONVENIENCE (DETERMINISTIC AND SAMPLING MODELS)
@@ -438,7 +292,6 @@ def paraphrase_beam(
         early_stopping=True,
     )
 
-
 def paraphrase_sample(
     text: str,
     num_return_sequences: int = 6,
@@ -452,7 +305,7 @@ def paraphrase_sample(
     return paraphrase(
         text=text,
         num_return_sequences=num_return_sequences,
-        num_beams=num_beams,     # Diverse beam sampling if >1
+        num_beams=num_beams,  # Diverse beam sampling if >1
         max_new_tokens=max_new_tokens,
         tone=tone,
         style=style,
@@ -466,7 +319,6 @@ def paraphrase_sample(
         length_penalty=0.9,
         early_stopping=True,
     )
-
 
 # ---------------------------------------------------------------------
 # SMOKE TEST
