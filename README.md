@@ -1,7 +1,18 @@
 # 🧠 Classifier-Guided Politeness Rewriting via Controlled Text Generation
 **Seoul National University — 2025-2 Introduction to NLP Course (001)**  
 **Team:** Saputra Rizky Johan, Bat-Orshikh Butemj, Shu Xian Chow  
-**Instructors:** Prof. Hwang Seung-Won, TAs Kim Jong-Yoon & Han Sang-Eun  
+**Instructors:** Prof. Hwang Seung-Won, TAs Kim Jong-Yoon & Han Sang-Eun
+
+![Python](https://img.shields.io/badge/Python-3.9_|_3.10-blue?logo=python)
+![Jupyter](https://img.shields.io/badge/Jupyter-Notebook-F37626?logo=jupyter)
+![PyTorch](https://img.shields.io/badge/PyTorch-2.1+-ee4c2c?logo=pytorch)
+![HuggingFace](https://img.shields.io/badge/HuggingFace-Datasets_|_Tokenizers-ffcc00?logo=huggingface)
+![Transformers](https://img.shields.io/badge/Transformers-4.x-yellow?logo=huggingface)
+![Gradio](https://img.shields.io/badge/Gradio-UI-ff6e5f?logo=gradio)
+![T5](https://img.shields.io/badge/Model-T5-blue)
+![BART](https://img.shields.io/badge/Model-BART-orange)
+![GPU](https://img.shields.io/badge/Acceleration-GPU_|_CUDA-green)
+![CPU AVX2](https://img.shields.io/badge/CPU-AVX2-green)
 
 ![Python](https://img.shields.io/badge/Python-3.9_|_3.10-blue?logo=python)
 ![Jupyter](https://img.shields.io/badge/Jupyter-Notebook-F37626?logo=jupyter)
